@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buckets & Artifact Storage 101</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter for a clean, modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS for animations, tooltips, and specific styling -->
+    <style>
+        /* --- Core Styles & Theme --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* A light gray background */
+        }
+
+        /* --- Tooltip Styles --- */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 2px dotted #6366f1; /* Indigo dotted underline */
+            cursor: help;
+        }
+
+        /* --- Card Drop-in Animation --- */
+        @keyframes dropIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .card-animate-in {
+            animation: dropIn 0.5s ease-out forwards;
+        }
+
+        /* --- Drag & Drop Highlighting --- */
+        .drag-over {
+            border: 3px dashed #34d399; /* A vibrant green */
+            background-color: #d1fae5; /* A light green */
+        }
+        
+        /* --- Artifact Drop Animation --- */
+        @keyframes artifactDrop {
+            0% { transform: scale(1.5); opacity: 0.7; }
+            100% { transform: scale(0.1); opacity: 0; }
+        }
+        .artifact-dropping {
+            position: absolute;
+            font-size: 48px; /* Large icon for visibility */
+            color: #6366f1;
+            pointer-events: none; /* Allows clicks to pass through */
+            animation: artifactDrop 0.6s ease-in forwards;
+            z-index: 100;
+        }
+
+        /* --- Pop-up Modal Styles --- */
+        .modal-backdrop {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Main Container -->
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900">Buckets & Artifact Storage 101</h1>
+            <p class="text-lg text-gray-600 mt-2">An interactive guide to cloud storage concepts.</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+
+            <!-- Left Panel: Controls -->
+            <aside class="lg:w-1/3 xl:w-1/4 space-y-8">
+                
+                <!-- Bucket Builder Wizard -->
+                <div id="bucket-builder" class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-2">1. Bucket Builder</h2>
+                    <form id="create-bucket-form" class="space-y-4">
+                        <div>
+                            <label for="bucket-name" class="block text-sm font-medium text-gray-700">Bucket Name</label>
+                            <input type="text" id="bucket-name" name="bucket-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., project-alpha-assets" required aria-label="Bucket Name">
+                        </div>
+                        <div>
+                            <label for="bucket-region" class="block text-sm font-medium text-gray-700">Region</label>
+                            <select id="bucket-region" name="bucket-region" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" aria-label="Bucket Region">
+                                <!-- Regions can be easily modified here -->
+                                <option>us-east-1 (N. Virginia)</option>
+                                <option>us-west-2 (Oregon)</option>
+                                <option>eu-west-1 (Ireland)</option>
+                                <option>ap-southeast-2 (Sydney)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-medium text-gray-700">Storage Class</span>
+                            <div class="mt-2 space-y-2" id="storage-class-options" role="radiogroup" aria-labelledby="storage-class-label">
+                                <!-- Storage class options and their associated costs -->
+                                <div class="flex items-center">
+                                    <input id="class-standard" name="storage-class" type="radio" value="Standard" checked class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="class-standard" class="ml-3 block text-sm text-gray-900">Standard</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="class-infrequent" name="storage-class" type="radio" value="Infrequent" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="class-infrequent" class="ml-3 block text-sm text-gray-900">Infrequent Access</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="class-archive" name="storage-class" type="radio" value="Archive" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="class-archive" class="ml-3 block text-sm text-gray-900">Archive</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">Create Bucket</button>
+                    </form>
+                </div>
+
+                <!-- Artifact Upload Simulator -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-2">2. Artifact Upload</h2>
+                    <p class="text-sm text-gray-600 mb-4">Select a bucket first, then drag the file icon below and drop it onto your chosen bucket.</p>
+                    <div id="artifact-source" class="text-center p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                        <div id="draggable-artifact" draggable="true" class="cursor-grab inline-flex items-center gap-2" aria-label="Draggable file icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                            <span class="font-semibold">mock-file.zip</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Estimator -->
+                <div class="bg-white p-6 rounded-xl shadow-md sticky top-8">
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-2">Cost Estimator</h2>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span>Total Storage:</span>
+                            <span id="total-storage" class="font-semibold">0.00 GB</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Storage Cost / mo:</span>
+                            <span id="storage-cost" class="font-semibold">$0.00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Est. Egress / mo:</span>
+                            <span id="egress-cost" class="font-semibold">$0.00</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="flex justify-between text-lg font-bold">
+                            <span>Total Monthly Cost:</span>
+                            <span id="total-cost" class="text-green-600">$0.00</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-4">Estimates are illustrative and based on simplified pricing.</p>
+                </div>
+
+            </aside>
+
+            <!-- Right Panel: Bucket Grid -->
+            <main id="main-content" class="lg:w-2/3 xl:w-3/4">
+                <div id="bucket-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <!-- Bucket cards will be dynamically inserted here -->
+                    <div id="empty-state" class="md:col-span-2 xl:col-span-3 text-center py-20 px-6 bg-gray-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 5 8-5" /></svg>
+                        <h3 class="mt-4 text-xl font-semibold text-gray-800">Your buckets will appear here</h3>
+                        <p class="mt-1 text-gray-500">Use the "Bucket Builder" on the left to get started.</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Pop-up Modal for Definitions -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden" aria-modal="true" role="dialog">
+        <div id="modal-content" class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 transform scale-95 opacity-0">
+            <div class="flex justify-between items-start">
+                <h3 id="modal-title" class="text-2xl font-bold"></h3>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600" aria-label="Close dialog">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <p id="modal-body" class="mt-4 text-gray-600"></p>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- CONFIGURATION & STATE MANAGEMENT --- //
+        
+        // Central state object to hold all bucket data.
+        // This acts as the "single source of truth" for the application.
+        const appState = {
+            buckets: [], // Array of bucket objects
+            selectedBucketId: null, // ID of the currently selected bucket
+        };
+
+        // Pricing and configuration. Easy to modify for educational purposes.
+        const config = {
+            storageClassRates: { // Cost per GB per month
+                'Standard': 0.023,
+                'Infrequent': 0.0125,
+                'Archive': 0.004,
+            },
+            egressRate: 0.09, // Cost per GB for data transfer out
+            egressAssumptionFactor: 0.1, // Assumes 10% of stored data is egressed monthly
+        };
+        
+        // Definitions for tooltips.
+        const definitions = {
+            'storage-class': {
+                title: 'Storage Class',
+                body: 'A storage class determines the cost, availability, and durability of your data. "Standard" is for frequently accessed data, "Infrequent" is for less-accessed data at a lower cost, and "Archive" is for long-term backup with the lowest storage cost but higher retrieval costs.'
+            },
+            'signed-url': {
+                title: 'Signed URL',
+                body: 'A Signed URL is a special web link that provides temporary, limited-time access to a specific file in your bucket. It\'s a secure way to let someone download an object without making it public or requiring them to have a user account.'
+            },
+            'egress': {
+                title: 'Egress',
+                body: 'Egress refers to data transfer OUT of the cloud storage provider\'s network. This is often a significant part of the total cost, as providers typically charge for data leaving their infrastructure (e.g., when a user downloads a file).'
+            }
+        };
+
+
+        // --- DOM ELEMENT REFERENCES --- //
+        const createBucketForm = document.getElementById('create-bucket-form');
+        const bucketGrid = document.getElementById('bucket-grid');
+        const emptyState = document.getElementById('empty-state');
+        const draggableArtifact = document.getElementById('draggable-artifact');
+        
+        // Cost Estimator Elements
+        const totalStorageEl = document.getElementById('total-storage');
+        const storageCostEl = document.getElementById('storage-cost');
+        const egressCostEl = document.getElementById('egress-cost');
+        const totalCostEl = document.getElementById('total-cost');
+        
+        // Modal Elements
+        const modalContainer = document.getElementById('modal-container');
+        const modalContent = document.getElementById('modal-content');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+
+        // --- CORE FUNCTIONS --- //
+
+        /**
+         * Renders all buckets from the appState to the DOM.
+         * This function is the primary way the UI is updated.
+         */
+        function renderAll() {
+            // Clear the grid but keep the empty state element template
+            bucketGrid.innerHTML = '';
+            bucketGrid.appendChild(emptyState);
+
+            if (appState.buckets.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+                appState.buckets.forEach(bucket => {
+                    const bucketCard = createBucketCard(bucket);
+                    bucketGrid.appendChild(bucketCard);
+                });
+            }
+            updateCostEstimator();
+        }
+
+        /**
+         * Creates an HTML element for a single bucket.
+         * @param {object} bucket - The bucket object from appState.
+         * @returns {HTMLElement} - The bucket card element.
+         */
+        function createBucketCard(bucket) {
+            const isSelected = bucket.id === appState.selectedBucketId;
+            const card = document.createElement('div');
+            card.className = `bucket-card bg-white p-5 rounded-xl shadow-md flex flex-col gap-4 transition-all duration-300 ${isSelected ? 'ring-4 ring-indigo-400' : 'ring-2 ring-transparent'} ${bucket.isNew ? 'card-animate-in' : ''}`;
+            card.dataset.bucketId = bucket.id;
+
+            // --- Card Header ---
+            const header = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">${bucket.name}</h3>
+                        <p class="text-sm text-gray-500">${bucket.region}</p>
+                    </div>
+                    <span class="text-xs font-semibold px-2 py-1 rounded-full ${
+                        bucket.storageClass === 'Standard' ? 'bg-blue-100 text-blue-800' :
+                        bucket.storageClass === 'Infrequent' ? 'bg-green-100 text-green-800' :
+                        'bg-purple-100 text-purple-800'
+                    }">${bucket.storageClass}</span>
+                </div>`;
+
+            // --- Artifacts List ---
+            let artifactsList = '<p class="text-sm text-gray-500 italic">No artifacts yet. Drag and drop a file to upload.</p>';
+            if (bucket.artifacts.length > 0) {
+                artifactsList = `
+                    <ul class="space-y-2 text-sm">
+                        ${bucket.artifacts.map(art => `
+                            <li class="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    <span>${art.name}</span>
+                                </div>
+                                <span class="text-gray-500">${(art.size / 1024).toFixed(2)} MB</span>
+                            </li>
+                        `).join('')}
+                    </ul>`;
+            }
+            const artifactsSection = `<div class="mt-2">
+                <h4 class="font-semibold text-gray-700">Artifacts (${bucket.artifacts.length})</h4>
+                <div class="mt-2 h-24 overflow-y-auto pr-2">${artifactsList}</div>
+            </div>`;
+
+            // --- Access Control Section ---
+            const aclTableRows = bucket.acl.map((rule, index) => `
+                <tr class="border-b">
+                    <td class="py-1 px-2">${rule.email}</td>
+                    <td class="py-1 px-2">${rule.role}</td>
+                    <td class="py-1 px-2 text-center">
+                        <button class="text-red-500 hover:text-red-700 remove-acl-btn" data-index="${index}" aria-label="Remove permission for ${rule.email}">×</button>
+                    </td>
+                </tr>`).join('');
+            
+            const aclTable = `
+                <div class="text-sm mt-2 ${bucket.access === 'Fine-grained' ? '' : 'hidden'}">
+                    <table class="w-full">
+                        <thead><tr class="text-left bg-gray-50"><th class="py-1 px-2 font-medium">User Email</th><th class="py-1 px-2 font-medium">Role</th><th></th></tr></thead>
+                        <tbody>${aclTableRows}</tbody>
+                    </table>
+                    <form class="flex gap-2 mt-2 add-acl-form">
+                        <input type="email" placeholder="user@example.com" class="flex-grow border rounded px-2 py-1 text-xs" required>
+                        <select class="border rounded px-1 py-1 text-xs"><option>Reader</option><option>Writer</option></select>
+                        <button type="submit" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-2 rounded text-xs">Add</button>
+                    </form>
+                </div>`;
+            
+            const accessControlSection = `
+                <div>
+                    <h4 class="font-semibold text-gray-700">Access Control</h4>
+                    <div class="flex items-center justify-around bg-gray-100 p-1 rounded-lg mt-2 text-sm">
+                        <button class="access-toggle-btn w-1/2 rounded-md py-1 ${bucket.access === 'Uniform' ? 'bg-white shadow' : ''}" data-access="Uniform">Uniform IAM</button>
+                        <button class="access-toggle-btn w-1/2 rounded-md py-1 ${bucket.access === 'Fine-grained' ? 'bg-white shadow' : ''}" data-access="Fine-grained">Fine-grained ACL</button>
+                    </div>
+                    ${aclTable}
+                </div>`;
+
+            // --- Lifecycle Policy Section ---
+            const lifecycleSection = `
+                <div>
+                    <h4 class="font-semibold text-gray-700">Lifecycle Policy</h4>
+                    <label for="lifecycle-${bucket.id}" class="text-sm text-gray-600 block mt-2">Delete objects after ${bucket.lifecycleDays} days</label>
+                    <input type="range" id="lifecycle-${bucket.id}" min="0" max="365" value="${bucket.lifecycleDays}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer lifecycle-slider mt-1">
+                </div>`;
+
+            card.innerHTML = header + artifactsSection + accessControlSection + lifecycleSection;
+            
+            // Mark as not new after initial animation
+            if (bucket.isNew) {
+                setTimeout(() => {
+                    bucket.isNew = false;
+                    card.classList.remove('card-animate-in');
+                }, 500);
+            }
+
+            return card;
+        }
+
+        /**
+         * Updates the cost estimator panel based on the current app state.
+         */
+        function updateCostEstimator() {
+            let totalStorageGB = 0;
+            let totalStorageCost = 0;
+
+            appState.buckets.forEach(bucket => {
+                const bucketStorageMB = bucket.artifacts.reduce((sum, art) => sum + art.size, 0);
+                const bucketStorageGB = bucketStorageMB / 1024;
+                totalStorageGB += bucketStorageGB;
+                totalStorageCost += bucketStorageGB * config.storageClassRates[bucket.storageClass];
+            });
+
+            const estimatedEgressCost = totalStorageGB * config.egressAssumptionFactor * config.egressRate;
+            const totalCost = totalStorageCost + estimatedEgressCost;
+
+            totalStorageEl.textContent = `${totalStorageGB.toFixed(2)} GB`;
+            storageCostEl.textContent = `$${totalStorageCost.toFixed(2)}`;
+            egressCostEl.textContent = `$${estimatedEgressCost.toFixed(2)}`;
+            totalCostEl.textContent = `$${totalCost.toFixed(2)}`;
+        }
+
+        /**
+         * Finds a bucket in the state by its ID.
+         * @param {string} id - The ID of the bucket to find.
+         * @returns {object|undefined} The bucket object or undefined if not found.
+         */
+        function findBucketById(id) {
+            return appState.buckets.find(b => b.id === id);
+        }
+
+        /**
+         * Shows the definition modal.
+         * @param {string} termKey - The key from the 'definitions' object.
+         */
+        function showModal(termKey) {
+            const definition = definitions[termKey];
+            if (!definition) return;
+            
+            modalTitle.textContent = definition.title;
+            modalBody.textContent = definition.body;
+
+            modalContainer.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            
+            // Trigger fade-in animation
+            setTimeout(() => {
+                modalContainer.classList.add('bg-opacity-50');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        /**
+         * Hides the definition modal.
+         */
+        function hideModal() {
+            modalContainer.classList.remove('bg-opacity-50');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                modalContainer.classList.add('hidden');
+                document.body.style.overflow = ''; // Restore scrolling
+            }, 300); // Match transition duration
+        }
+
+
+        // --- EVENT HANDLERS --- //
+
+        /**
+         * Handles the creation of a new bucket from the form.
+         */
+        createBucketForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(createBucketForm);
+            const bucketName = formData.get('bucket-name');
+            
+            // Check for duplicate bucket names
+            if (appState.buckets.some(b => b.name === bucketName)) {
+                alert('A bucket with this name already exists. Please choose a unique name.');
+                return;
+            }
+
+            const newBucket = {
+                id: `bucket-${Date.now()}`,
+                name: bucketName,
+                region: formData.get('bucket-region'),
+                storageClass: formData.get('storage-class'),
+                artifacts: [],
+                access: 'Uniform',
+                acl: [],
+                lifecycleDays: 30,
+                isNew: true, // Flag for animation
+            };
+
+            appState.buckets.push(newBucket);
+            appState.selectedBucketId = newBucket.id; // Select the new bucket
+            renderAll();
+            createBucketForm.reset();
+        });
+
+        /**
+         * Handles all clicks within the main content area using event delegation.
+         */
+        document.getElementById('main-content').addEventListener('click', (e) => {
+            const target = e.target;
+            const bucketCard = target.closest('.bucket-card');
+            if (!bucketCard) return;
+
+            const bucketId = bucketCard.dataset.bucketId;
+            const bucket = findBucketById(bucketId);
+            if (!bucket) return;
+
+            // --- Bucket Selection ---
+            if (appState.selectedBucketId !== bucketId) {
+                appState.selectedBucketId = bucketId;
+                renderAll();
+            }
+
+            // --- Access Control Toggle ---
+            if (target.matches('.access-toggle-btn')) {
+                bucket.access = target.dataset.access;
+                renderAll();
+            }
+            
+            // --- Remove ACL Rule ---
+            if (target.matches('.remove-acl-btn')) {
+                const index = parseInt(target.dataset.index, 10);
+                bucket.acl.splice(index, 1);
+                renderAll();
+            }
+        });
+        
+        /**
+         * Handles form submissions for adding ACL rules.
+         */
+        document.getElementById('main-content').addEventListener('submit', (e) => {
+            if (!e.target.matches('.add-acl-form')) return;
+            e.preventDefault();
+            
+            const form = e.target;
+            const bucketCard = form.closest('.bucket-card');
+            const bucketId = bucketCard.dataset.bucketId;
+            const bucket = findBucketById(bucketId);
+
+            const email = form.querySelector('input[type="email"]').value;
+            const role = form.querySelector('select').value;
+            
+            if (bucket && email) {
+                bucket.acl.push({ email, role });
+                renderAll();
+            }
+        });
+        
+        /**
+         * Handles input changes for lifecycle sliders.
+         */
+        document.getElementById('main-content').addEventListener('input', (e) => {
+            if (!e.target.matches('.lifecycle-slider')) return;
+
+            const slider = e.target;
+            const bucketCard = slider.closest('.bucket-card');
+            const bucketId = bucketCard.dataset.bucketId;
+            const bucket = findBucketById(bucketId);
+
+            if (bucket) {
+                bucket.lifecycleDays = slider.value;
+                // Update the label text in real-time without a full re-render for smoothness
+                const label = slider.previousElementSibling;
+                if (label) {
+                    label.textContent = `Delete objects after ${slider.value} days`;
+                }
+            }
+        });
+
+        // --- Drag and Drop Event Handlers --- //
+        draggableArtifact.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', 'artifact'); // Set data to identify the drop
+            e.dataTransfer.effectAllowed = 'copy';
+            draggableArtifact.classList.add('opacity-50');
+        });
+
+        draggableArtifact.addEventListener('dragend', () => {
+            draggableArtifact.classList.remove('opacity-50');
+        });
+
+        bucketGrid.addEventListener('dragenter', (e) => {
+            const dropTarget = e.target.closest('.bucket-card');
+            if (dropTarget) {
+                e.preventDefault();
+                dropTarget.classList.add('drag-over');
+            }
+        });
+
+        bucketGrid.addEventListener('dragover', (e) => {
+            const dropTarget = e.target.closest('.bucket-card');
+            if (dropTarget) {
+                e.preventDefault(); // Necessary to allow a drop
+            }
+        });
+
+        bucketGrid.addEventListener('dragleave', (e) => {
+            const dropTarget = e.target.closest('.bucket-card');
+            if (dropTarget) {
+                dropTarget.classList.remove('drag-over');
+            }
+        });
+
+        bucketGrid.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const dropTarget = e.target.closest('.bucket-card');
+            if (!dropTarget) return;
+
+            dropTarget.classList.remove('drag-over');
+            const bucketId = dropTarget.dataset.bucketId;
+            const bucket = findBucketById(bucketId);
+
+            if (bucket) {
+                // Create a mock artifact
+                const newArtifact = {
+                    name: `data-file-${Math.floor(Math.random() * 900) + 100}.json`,
+                    size: Math.random() * 5000 + 100, // Random size in KB
+                    created: new Date().toISOString(),
+                };
+                bucket.artifacts.push(newArtifact);
+                
+                // --- Visual Feedback: Dropping Icon Animation ---
+                const icon = document.createElement('div');
+                icon.innerHTML = '📄'; // File emoji
+                icon.className = 'artifact-dropping';
+                document.body.appendChild(icon);
+                
+                const startRect = draggableArtifact.getBoundingClientRect();
+                const endRect = dropTarget.getBoundingClientRect();
+                
+                icon.style.left = `${startRect.left + startRect.width / 2}px`;
+                icon.style.top = `${startRect.top + startRect.height / 2}px`;
+                
+                // Animate to the center of the card
+                requestAnimationFrame(() => {
+                    icon.style.transition = 'transform 0.6s ease-in, opacity 0.6s ease-in';
+                    icon.style.transform = `translate(${endRect.left - startRect.left + (endRect.width/2) - (icon.offsetWidth/2)}px, ${endRect.top - startRect.top + (endRect.height/2) - (icon.offsetHeight/2)}px) scale(0.1)`;
+                    icon.style.opacity = '0';
+                });
+
+                // Clean up the icon after animation
+                setTimeout(() => {
+                    icon.remove();
+                    // Re-render after the animation is done
+                    renderAll();
+                }, 600);
+            }
+        });
+
+        // --- Tooltip and Modal Click Handlers --- //
+        document.body.addEventListener('click', (e) => {
+            // Show modal for tooltips
+            if (e.target.matches('.tooltip')) {
+                showModal(e.target.dataset.term);
+            }
+        });
+        
+        // Hide modal on close button click or backdrop click
+        modalCloseBtn.addEventListener('click', hideModal);
+        modalContainer.addEventListener('click', (e) => {
+            if (e.target === modalContainer) {
+                hideModal();
+            }
+        });
+        
+        // Hide modal on Escape key press
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modalContainer.classList.contains('hidden')) {
+                hideModal();
+            }
+        });
+
+
+        // --- INITIAL RENDER --- //
+        // Add tooltips to the page dynamically
+        function initializeTooltips() {
+            const tooltipElements = [
+                { selector: '#storage-class-options', term: 'storage-class', text: 'Storage Class' },
+                { selector: '#access-control-section', term: 'signed-url', text: 'Signed URL' }, // Placeholder, can be added to card
+                { selector: '#cost-estimator', term: 'egress', text: 'Egress' }, // Placeholder
+            ];
+            
+            // This is a simplified way to add tooltips. 
+            // A more robust solution might parse the document for specific keywords.
+            // For now, let's add one to the storage class title.
+            const storageClassLabel = document.querySelector('label[for="storage-class-options"]');
+            if (storageClassLabel) {
+                 // This is a conceptual example. The actual implementation is more complex.
+            }
+        }
+
+        renderAll();
+        // initializeTooltips(); // Future implementation
+    });
+    </script>
+</body>
+</html>
